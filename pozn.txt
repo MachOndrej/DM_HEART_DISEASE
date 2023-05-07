@@ -1,0 +1,22 @@
+Feature select: (výběr důležitých proměnných) 
+https://machinelearningmastery.com/feature-selection-with-the-caret-r-package/
+- pomocí Recursive Feature Elimination
+Generally, you want to remove attributes with an absolute correlation of 0.75 or higher.
+
+In the `rfeControl` function from the `caret` package in R, the following settings are specified:
+
+- `functions = rfFuncs`: This specifies the set of functions to be used for model training and evaluation. In this case, the `rfFuncs` function set is used, which includes the `randomForest` algorithm for feature selection.
+
+- `method = "cv"`: This specifies the method for model evaluation, which is set to "cv" for cross-validation. This means that the model will be trained and evaluated on multiple subsets of the data, and the performance metrics will be averaged over these subsets.
+
+- `number = 10`: This specifies the number of folds to be used in cross-validation, which is set to 10. This means that the data will be divided into 10 subsets, and the model will be trained and evaluated on each of these subsets in turn.
+
+Neural Net
+https://github.com/DaanishAhmed/R-Neural-Network
+
+CaR Tree
+https://www.guru99.com/r-decision-trees.html#3
+
+
+
+
