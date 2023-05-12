@@ -1,18 +1,18 @@
 set.seed(7)
-# Instalace knihoven - install.packages("library_name")
 # install.packages('caret', repos = 'http://cran.us.r-project.org', dependencies = TRUE)
 # IMPORT KNIHOVEN
 library(dplyr)
 library(mlbench)
 library(caret) # korelace a další fce
 library(ggplot2)
-# DATA PREPARATION
+
+# Práce s daty a jejich příprava
 df <- read.csv("HEART.txt", sep = "\t", header = TRUE)
-# data <- read.csv("HEART", header = TRUE, fileEncoding = "UTF-8")
-# Zobrazení dat
-#View(df)      # zobrazení dat v tabulce
-# Type node
-# Convert columns to different data types
+
+# Zobrazení dat v tabulce
+# View(df)
+
+# "Uzel Type" - změna typu některých sloupců
 df <- df %>% # knihovna dplyr
     mutate(
         Hladina.cukru.nad.120.mg.dl = ifelse(Hladina.cukru.nad.120.mg.dl == "cukr>120mg/dl", 1, 0),
@@ -23,7 +23,7 @@ df <- df %>% # knihovna dplyr
         Pocet.velkych.cev.oznacenych.barvivem = as.factor(Pocet.velkych.cev.oznacenych.barvivem),
         Vysledek.predchoziho.vysetreni = as.factor(Vysledek.predchoziho.vysetreni)
     )
-# Check the data types of the columns
+# Kontrola datových typů sloupců
 # str(df)
 
 # Určete průměrnou Hladinu cholesterolu v krvi u pacientů nad 50 let.
@@ -48,8 +48,8 @@ min_values <- apply(df[c(
     "Hodnota.stres.testu"
 )], MARGIN = 2, min, na.rm = TRUE)
 # Zobrazeni hodnot
-means_df <- data.frame(Mean = means, Minimum = min_values, Maximum = max_values)
-print(means_df)
+info_df <- data.frame(Mean = means, Minimum = min_values, Maximum = max_values)
+print(info_df)
 
 # Histogram Indikace srdeční choroby
 hist_indikace <- ggplot(df, aes(x = Indikace.srdecni.choroby, fill = Indikace.srdecni.choroby)) +
@@ -67,10 +67,10 @@ hist_indikace <- ggplot(df, aes(x = Indikace.srdecni.choroby, fill = Indikace.sr
         legend.title = element_text(size = 20),
         legend.text = element_text(size = 18)
     )
-# ggsave(filename = "hist_indikace.png", plot = hist_indikace)
+ggsave(filename = "hist_indikace.png", plot = hist_indikace)
 # print(hist_indikace)
 
-# Plot Klidovy krevni tlax x Max. srdecni tep
+# Plot Klidový krevní tlak x Maximální srdeční tep
 plot_tlak_tep <- ggplot(data = df, aes(
     x = Klidovy.krevni.tlak..mm.,
     y = Maximaln.srdecni.tep,
@@ -78,10 +78,10 @@ plot_tlak_tep <- ggplot(data = df, aes(
 )) +
     geom_point(size = 5) +
     labs(
-        x = "Klidovy krevni tlak", y = "Maximalni srdecni tep", title = "Klidový krevní tlak\nx\nMax. srdeční tep",
+        x = "Klidovy krevni tlak", y = "Maximalni srdecni tep",
+        title = "Klidový krevní tlak\nx\nMax. srdeční tep",
         color = "Výsledek:"
     ) +
-    # theme(aspect.ratio = 0.5) +
     coord_cartesian() +
     scale_color_manual(labels = c("Negativní", "Pozitivní"), values = c("blue", "red")) +
     theme(
@@ -91,33 +91,42 @@ plot_tlak_tep <- ggplot(data = df, aes(
         legend.title = element_text(size = 20),
         legend.text = element_text(size = 18)
     )
-# ggsave(filename = "plot_tlak_tep.png", plot = plot_tlak_tep)
+ggsave(filename = "plot_tlak_tep.png", plot = plot_tlak_tep)
 # print(plot_tlak_tep)
 
 # FEATURE SELECTION - knihovny: caret a mlbench
-# define the control using a random forest selection function
-control <- rfeControl(functions=rfFuncs, method="cv", number=10)
-# run the RFE algorithm
-results_fs <- rfe(df[, 1:13], df[, 14], sizes = c(1:13), rfeControl=control)
-# summarize the results
-#print(results_fs)
-# list the chosen features - vraci jmena relevantnich prediktorů 
-#predictors(results_fs)
-# plot the results
-fs_results_plot <- ggplot(data = results_fs) + geom_point(size = 5) +
-    labs(x = "Prediktory", y = "Přesnost (Cross-Validation)",
-    title = "Feature Selection") +
+# Control tvoří random forest selection function
+control <- rfeControl(functions = rfFuncs, method = "cv", number = 5)
+
+# Stanovení predicors a target
+predictors <- df[, 1:13]
+target <- df[, 14]
+
+# Provedení feature selection pomocí rfe()
+model <- rfe(predictors, target, sizes = c(1:13), rfeControl = control)
+
+# Výsledky modelu
+print(model)
+# Relevantní prediktory
+predictors(model)
+
+# Graf výsledků
+fs_results_plot <- ggplot(data = model) +
+    geom_point(size = 5) +
+    labs(
+        x = "Prediktory", y = "Přesnost (Cross-Validation)",
+        title = "Feature Selection"
+    ) +
     scale_x_discrete(limits = factor(c(1:13))) +
     theme(
         axis.text.x = element_text(size = 23), axis.title.x = element_text(size = 25),
         axis.text.y = element_text(size = 23), axis.title.y = element_text(size = 25),
-        plot.title = element_text(hjust = 0.5, size = 30, face = "bold"))
-#print(fs_results_plot)
-#ggsave(filename = "feature_select.png", plot = fs_results_plot)
-# Subset relevantnich dat
+        plot.title = element_text(hjust = 0.5, size = 30, face = "bold")
+    )
+print(fs_results_plot)
+ggsave(filename = "feature_select.png", plot = fs_results_plot)
 
-# Odečtení nepodstatných sloupců dat
-new_df <- df[, -c(6, 7)]
-#View(new_df)
-write.table(new_df, file = "HEART2.csv", sep = "\t",
-    row.names = FALSE)
+# Odečtení "nepodstatných" sloupců dat
+new_df <- df[, -6]
+# View(new_df)
+write.table(new_df, file = "HEART2.csv", sep = "\t", row.names = FALSE)

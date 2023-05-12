@@ -17,6 +17,10 @@ https://github.com/DaanishAhmed/R-Neural-Network
 CaR Tree
 https://www.guru99.com/r-decision-trees.html#3
 
+CHAID
+https://www.r-bloggers.com/2018/05/chaid-and-r-when-you-need-explanation-may-15-2018/
+- The CHAID library in R requires that any variables that we enter as predictors be either nominal or ordinal variables (see ?CHAID::chaid), which in R speak means we have to get them in as either factor or ordered factor
+
 
 
 
