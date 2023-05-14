@@ -1,77 +1,55 @@
-# Loads the neuralnet package into the system.
+# Import knihove
 library(neuralnet)
-# DATA PREP
-# Opens the CSV file
+library(rpart)
+#install.packages("partykit", repos = 'http://cran.us.r-project.org', dependencies = TRUE)
+library(partykit)
+library(rattle)
+library(caret)
+# Příprava dat
+# Načtení souboru upraveného pomocí Feature selection
 heart_dis <- read.csv("HEART2.csv", head = TRUE, sep = "\t")
 
-# Set target to binary
-#heart_dis$Indikace.srdecni.choroby <- ifelse(heart_dis$Indikace.srdecni.choroby == 2, 1, 0)
-
-# Previews the heart disease dataset.
+# Zobrazení datasetu
 #View(heart_dis)
 
-# Displays the structure of the data
+# Zobrazení struktury datasetu
 #str(heart_dis)
 
-# Displays the descriptive statistics for all variables in the dataset.  This
-# shows whether all variables are numeric and if there are any missing values.
+# Zobrazení statistických údajů o datasetu
 #summary(heart_dis)
 
-# Sets the input variables to the same scale, such that they have the same
-# mean and standard deviation.
+# Nastavení stejného scale datasetu (kvůli pruměru a standatní odchylce)
 heart_dis[1:13] <- scale(heart_dis[1:13])
 
-# Verifies that the variables are set to the same scale.  All variables
-# except for "fstat" should have a mean equal to 0.
-#print(summary(heart_dis))
-
-# Generates a random seed to allow us to reproduce the results.
+# Seed
 set.seed(12345)
 
-# The following code splits the dataset into a training set consisting of
-# 70% of the data and a test set containing 30% of the data.
+# Rozdělení na testovací a trénovací (70:30)
 ind <- sample(2, nrow(heart_dis), replace = TRUE, prob = c(0.7, 0.3))
 train_data <- heart_dis[ind == 1, ]
 test_data <- heart_dis[ind == 2, ]
 
-# Neural Net
-# https://github.com/DaanishAhmed/R-Neural-Network
+# Neural Net:
+# Tvorba modelu
 nn <- neuralnet(formula = Indikace.srdecni.choroby ~ .,
                 data = train_data, hidden = 5,
                 err.fct = "sse", linear.output = FALSE)
-
-# Shows the summary of the model.
-#summary(nn)
-
-# We will examine the following properties: the response values, result
-# matrix, and net result probabilities.
-
-# Shows the values of the dependent variable for the first 20 observations.
-nn$response[1:20]
-# Shows the probability for the first 20 records.
-nn$net.result[[1]][1:20]
-# Shows the network result matrix, which includes information on the number
-# of training steps, the error, and the weights.
-nn$result.matrix
-
-# Creates a visualization of the neural network.
+# Vizualizace neuronové sítě
 #plot(nn)
 
-# Computes the predicted values for the training set and rounds them to the
-# nearest integer (either 0 or 1).
-mypredict <- compute(nn, nn$covariate)$net.result
-mypredict <- apply(mypredict, c(1), round)
+# Predikce na trénovacích datech
+#mypredict <- compute(nn, nn$covariate)$net.result
+#mypredict <- apply(mypredict, c(1), round)
 
-# Shows the first 20 predicted values.
-mypredict[1:20]
+# Prvních 20 testovacích predkcí
+#mypredict[1:20]
 
 # Creates the confusion matrix on the training data.
-table(mypredict, train_data$Indikace.srdecni.choroby, dnn = c("Predicted", "Actual"))
+#table(mypredict, train_data$Indikace.srdecni.choroby, dnn = c("Predicted", "Actual"))
 
-# Computes the predicted values for the test set and rounds them to the
-# nearest integer (either 0 or 1).
-testPred <- compute(nn, test_data[, 0:12])$net.result
-testPred <- apply(testPred, 1, round)
+# Predikce na testovacích datech
+pred_nn <- compute(nn, test_data[, 0:12])$net.result
+pred_nn <- apply(pred_nn, c(1), round)
 
 #  (Matice záměn = Confusion matrix)
 #		  	          PREDIKCE
@@ -88,58 +66,70 @@ testPred <- apply(testPred, 1, round)
 # Accuracy [%] = 100*((TP + TN)/(TP + TN + FP + FN))
 # Error [%] = 100 - Accuracy
 
-# Creates the confusion matrix on the test data.
-tab1 <- table(testPred, test_data$Indikace.srdecni.choroby)
+# Tvorba matice záměn
+tab1 <- table(pred_nn, test_data$Indikace.srdecni.choroby)
 rownames(tab1) <- c("False", "True")
 colnames(tab1) <- c("False", "True")
-
+# Zobrazení
 View(tab1)
-# Computes Missclassification error
+
+# Výpočet chyby a přesnosti pro Neural net
 nn_accuracy <- 100 * (sum(diag(tab1)) / sum(tab1)) # v procentech
 nn_error <- 100 - nn_accuracy
 print(paste("Neural Net - Error: ", nn_error, " %"))
-#nn_accuracy <- 100 - mc_error
 print(paste("Neural Net - Accuracy: ", nn_accuracy, " %"))
 
-# C&R Tree
-# Load the 'rpart' package
-library(rpart)
-
-# Build a C&R tree for classification
+# C&R Tree:
+# Tvorba modelu C&R tree
 car_tree <- rpart(Indikace.srdecni.choroby ~ .,
     data = train_data,
     method = "class")
-#print(car_tree)
 
-# predikce (model, data, type)
+# Predikce
 predict_tree <- predict(car_tree, test_data, type = "class")
+
 # Confusion matrix
 tab2 <- table(predict_tree, test_data$Indikace.srdecni.choroby)
 rownames(tab2) <- c("False", "True")
 colnames(tab2) <- c("False", "True")
 View(tab2)
-# Accuracy
+
+# Přestnost a chyba stromu
 car_accuracy <- 100 * (sum(diag(tab2)) / sum(tab2))
 car_error <- 100 - car_accuracy
 print(paste("C&R Tree - Error: ", car_error, " %"))
 print(paste("C&R Tree - Accuracy: ", car_accuracy, " %"))
 
-# Ctree (použit místo CHAID)
-library(partykit)   #install.packages("partykit", repos = 'http://cran.us.r-project.org', dependencies = TRUE)
-
-# Train a ctree model using the training data
+# Ctree (použito místo CHAID):
+# Trénování modelu
 ctree_model <- ctree(Indikace.srdecni.choroby ~ ., data = train_data)
 
 # Predikce
-predict_ctree <- predict(ctree_model, newdata = test_data)
-View(predict_ctree)
+predict_ctree <- predict(ctree_model, newdata = test_data, type = "response")
+plot(predict_ctree)
 # Confusion matrix
 tab3 <- table(predict_ctree, test_data$Indikace.srdecni.choroby)
+#View(tab3)
+# Dostaneme více ... Důvod (asi):
+#  Stále získáváme více předpokládaných tříd na pozorování
+#  s type = "response", může to být proto, že rozhodovací strom
+#  má více než jeden list, který splňuje kritéria pro toto pozorování
+sum_fn <- sum(tab3[2:8, 1]) # suma False Negative bez prvního řádku
+sum_tp <- sum(tab3[2:8, 2]) # suma True Positive bez prvního řádku
+
+#print(sum_fn)
+#print(sum_tp)
+
+# Práce s tabulkou
+tab3[2, 1] <- sum_fn
+tab3[2, 2] <- sum_tp
+tab3 <- tab3[-c(3:nrow(tab3)), ]
 rownames(tab3) <- c("False", "True")
 colnames(tab3) <- c("False", "True")
+#View(tab3)
 
-# Accuracy
+# Přesnost a chyba  ==> VÝSLEDNÉ HODNOTY NEDÁVAJÍ SMYSL
 ctree_accuracy <- 100 * (sum(diag(tab3)) / sum(tab3))
-ctree_error <- 100 - car_accuracy
-print(paste("C&R Tree - Error: ", ctree_error, " %"))
-print(paste("C&R Tree - Accuracy: ", ctree_accuracy, " %"))
+ctree_error <- 100 - ctree_accuracy
+print(paste("CTree - Error: ", ctree_error, " %"))
+print(paste("CTree - Accuracy: ", ctree_accuracy, " %"))
